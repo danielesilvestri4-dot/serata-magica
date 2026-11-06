@@ -115,6 +115,14 @@ select option{background:var(--deep)}
 .topbar .who h2{font-size:clamp(26px,6vw,34px)}
 .tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:6px;margin:0 0 18px;border-radius:999px;background:rgba(18,7,46,.72);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .tabs::-webkit-scrollbar{display:none}
+@media (max-width:560px){.tabs{flex-wrap:wrap;overflow:visible;border-radius:22px}.tab{flex:1 1 40%;text-align:center}}
+.head-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.head-acts .btn[aria-pressed=true]{box-shadow:0 0 0 3px rgba(255,184,224,.45)}
+.collapse-btn{appearance:none;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);width:38px;height:38px;border-radius:50%;display:inline-grid;place-items:center;cursor:pointer;flex-shrink:0}
+.collapse-btn svg{width:18px;height:18px;transition:transform .25s}
+.collapse-btn[aria-expanded=true] svg{transform:rotate(180deg)}
+.car-sum{display:flex;gap:8px;flex-wrap:wrap;font-size:13.5px}
+.car-sum span{background:rgba(10,4,30,.45);border-radius:999px;padding:4px 10px;border:1px solid var(--line)}
 .tab{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:14px;padding:9px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .tab[aria-selected=true]{background:var(--cta);color:#1b0a40}
 .tab.admin{color:#ffb8e0}
@@ -292,7 +300,7 @@ let synced = { party:null, users:{}, cars:{} };
 let loaded = false, loadError = null;
 function loadSession(){ try{ return JSON.parse(localStorage.getItem(SKEY)) || null; }catch(e){ return null; } }
 let session = loadSession();
-const ui = { tab:"festa", admin:"festa", guestView:"choice", photo:null, pending:{}, passwords:{}, pwFor:-1, busy:false };
+const ui = { carOpen:false, dirty:false, tab:"festa", admin:"festa", guestView:"choice", photo:null, pending:{}, passwords:{}, pwFor:-1, busy:false };
 function setSession(s){ session = s; try{ s ? localStorage.setItem(SKEY, JSON.stringify(s)) : localStorage.removeItem(SKEY); }catch(e){} }
 
 const USER_COLS = "id,ruolo,nome,cognome,nick,foto,pagato,viaggio,avviso,creato";
@@ -356,9 +364,9 @@ async function refresh(force){
   try{ await fetchAll(); loaded = true; loadError = null; }
   catch(e){ console.error(e); if(!loaded){ loadError = e; } }
   const typing = document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.type!=="checkbox";
-  if(force || !typing) render(); else setTimeout(()=>scheduleRefresh(), 3000);
+  if(force || (!typing && !ui.dirty)) render(); else setTimeout(()=>scheduleRefresh(), 3000);
 }
-function commit(){ render(); return sync(); }
+function commit(){ ui.dirty = false; render(); return sync(); }
 
 async function boot(){
   if(!window.supabase || /INSERISCI/.test(SUPABASE_URL)){ loadError = { message:"Collegamento a Supabase non configurato." }; render(); return; }
@@ -657,7 +665,9 @@ function ridePanel(u){
     const c = car || {time:"", from:"", seats:3};
     const resOptions = state.users.filter(x=>x.id!==u.id && !carOf(x.id) && !carWith(x.id) && !(car && car.reservations.some(r=>r.userId===x.id)));
     mine = `<div class="glass stack">
-      <div class="panel-title"><h3>${car?"La tua auto":"Offri un passaggio"}</h3>${car?`<span class="pill ok">Pubblicata</span>`:""}</div>
+      <div class="panel-title" style="align-items:center;margin-bottom:0"><h3>${car?"La tua auto":"Offri un passaggio"}</h3>
+        <div class="row" style="gap:8px">${car?`<span class="pill ok">Pubblicata</span><button type="button" class="collapse-btn" data-act="toggle-car" aria-expanded="${!!ui.carOpen}" aria-label="${ui.carOpen?"Chiudi":"Apri"} la tua auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>`:""}</div></div>
+      ${car && !ui.carOpen ? `<div class="car-sum"><span>🕘 ${esc(car.time)}</span><span>📍 ${esc(car.from)}</span><span>${freeSeats(car)} posti liberi</span>${car.reservations.length?`<span>${car.reservations.length} riservati</span>`:""}</div>` : `
       <form id="car-form" class="stack">
         <div class="grid2">
           <div><label for="car-time">Orario di partenza</label><input id="car-time" type="time" value="${esc(c.time)}" required></div>
@@ -679,7 +689,7 @@ function ridePanel(u){
           <div style="flex:1;min-width:130px"><label for="res-cognome">Cognome</label><input id="res-cognome" type="text"></div>
           <button type="button" class="btn ghost sm" data-act="res-add-name" ${freeSeats(car)<=0?"disabled":""}>Riserva</button>
         </div>
-      </div>`:""}
+      </div>`:""}`}
     </div>`;
   }
   const others = state.cars.slice().sort((a,b)=>a.time.localeCompare(b.time));
@@ -714,8 +724,7 @@ function peopleGrid(){
 function viewApp(u){
   const host = isHost(u);
   const tabs = [["festa","Info festa"],["pagamento","Pagamento"],["passaggi","Passaggi"],["partecipanti","Partecipanti"]];
-  if(host) tabs.push(["regia","Regia host"]);
-  if(!tabs.some(t=>t[0]===ui.tab)) ui.tab="festa";
+  if(!tabs.some(t=>t[0]===ui.tab) && !(host && ui.tab==="regia")) ui.tab="festa";
   let content = "";
   if(ui.tab==="festa") content = partyCard();
   if(ui.tab==="pagamento") content = paymentCard(u);
@@ -725,7 +734,7 @@ function viewApp(u){
   return `<header class="topbar">
       <img class="av" src="${photoOf(u)}" alt="">
       <div class="who"><span class="eyebrow">${host?"Host":"Ospite"} · ${esc(u.nick)}</span><h2 class="glow-text">${esc(state.party.name)}</h2></div>
-      <button class="btn ghost sm" data-act="logout">Esci</button>
+      <div class="head-acts">${host?`<button class="btn hot sm" data-act="tab" data-t="regia" aria-pressed="${ui.tab==="regia"}">Regia</button>`:""}<button class="btn ghost sm" data-act="logout">Esci</button></div>
     </header>
     <nav class="tabs" role="tablist">${tabs.map(([k,l])=>`<button class="tab ${k==="regia"?"admin":""}" role="tab" aria-selected="${ui.tab===k}" data-act="tab" data-t="${k}">${l}</button>`).join("")}</nav>
     ${content}
@@ -811,9 +820,11 @@ function adminCars(){
 function newId(prefix){ return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function lockForm(f, on){ f.querySelectorAll("button,input").forEach(x=>x.disabled = on); }
 
+document.addEventListener("input", e=>{ if(e.target.closest("form") && !e.target.closest("#gate-form,#login-form")) ui.dirty = true; });
 document.addEventListener("submit", async e=>{
   e.preventDefault();
   const f = e.target;
+  ui.dirty = false;
   if(f.id==="gate-form"){
     const v = $("#gate-pass").value.trim();
     if(v===GUEST_PASS){ setSession({ gate:"guest" }); ui.guestView="choice"; render(); }
@@ -862,8 +873,8 @@ document.addEventListener("submit", async e=>{
     const car = carOf(u.id);
     const used = car ? car.passengers.length + car.reservations.length : 0;
     if(seats < used){ $("#car-err").textContent = `Hai già ${used} posti occupati o riservati: non puoi scendere sotto questo numero.`; return; }
-    if(car){ Object.assign(car, { time, from, seats }); toast("Auto aggiornata"); }
-    else { leaveAllCars(u.id); state.cars.push({ id:newId("car-"), driverId:u.id, time, from, seats, passengers:[], reservations:[], created:Date.now() }); toast("Auto pubblicata"); }
+    if(car){ Object.assign(car, { time, from, seats }); ui.carOpen=false; toast("Auto aggiornata"); }
+    else { leaveAllCars(u.id); state.cars.push({ id:newId("car-"), driverId:u.id, time, from, seats, passengers:[], reservations:[], created:Date.now() }); toast("Auto pubblicata"); ui.carOpen=false; }
     u.ride = "drive"; commit();
   }
   if(f.id==="party-form"){
@@ -893,11 +904,11 @@ document.addEventListener("click", e=>{
   const a = el.dataset.act; const u = me();
   switch(a){
     case "close-modal": $("#modal-root").innerHTML=""; break;
-    case "logout": setSession(null); ui.photo=null; ui.pending={}; ui.tab="festa"; ui.passwords={}; ui.pwFor=-1; render(); break;
+    case "logout": ui.dirty=false; setSession(null); ui.photo=null; ui.pending={}; ui.tab="festa"; ui.passwords={}; ui.pwFor=-1; render(); break;
     case "guest-view": ui.guestView=el.dataset.v; ui.photo=null; render(); break;
     case "copy": copyText(el.dataset.text, el.dataset.label); break;
-    case "tab": ui.tab=el.dataset.t; ui.pending={}; render(); window.scrollTo({top:0,behavior:"smooth"}); break;
-    case "admin-tab": ui.admin=el.dataset.t; ui.pending={}; if(ui.admin==="pagamenti") ui.pwFor=-1; render(); break;
+    case "tab": ui.tab=el.dataset.t; ui.pending={}; ui.dirty=false; render(); window.scrollTo({top:0,behavior:"smooth"}); break;
+    case "admin-tab": ui.admin=el.dataset.t; ui.pending={}; ui.dirty=false; if(ui.admin==="pagamenti") ui.pwFor=-1; render(); break;
     case "wiz": {
       const to = el.dataset.to;
       if(to==="done"){ setSession({ uid:u.id }); ui.tab="festa"; toast("Benvenuto alla "+state.party.name); }
@@ -910,6 +921,7 @@ document.addEventListener("click", e=>{
       if(mode==="drive") leaveAllCars(u.id);
       u.ride = mode; ui.pending={}; commit(); break;
     }
+    case "toggle-car": ui.carOpen=!ui.carOpen; ui.dirty=false; render(); break;
     case "cancel-drop": ui.pending={}; render(); break;
     case "confirm-drop": { const car=carOf(u.id); if(car) deleteCar(car); u.ride="ride"; ui.pending={}; commit(); toast("Auto cancellata, passeggeri avvisati"); break; }
     case "join-car": { const c=state.cars.find(x=>x.id===el.dataset.id); if(!c||freeSeats(c)<=0) break; leaveAllCars(u.id); c.passengers.push(u.id); u.ride="ride"; commit(); toast(`Sei a bordo con ${userById(c.driverId)?.nick}`); break; }
