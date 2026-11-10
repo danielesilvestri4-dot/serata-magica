@@ -172,7 +172,7 @@ header.top{display:flex;align-items:center;gap:12px;padding-block:12px 0}
   <div class="sr-only" id="announce" role="status" aria-live="polite"></div>
   <div class="sr-only">
     <a id="maps-link" href="https://www.google.com/maps/search/?api=1&query=Piazza+dell%27Isolotto+Firenze" target="_blank" rel="noopener">Apri in Maps</a>
-    <section data-sr-room="festa"><p>Sabato 21 novembre, ore 21:30, Piazza dell'Isolotto, Firenze.</p><button type="button" data-sr-act="copyAddress">Copia indirizzo</button></section>
+    <section data-sr-room="festa"><p>Sabato 21 novembre, ore 21:30, Piazza dell'Isolotto, Firenze.</p><button type="button" data-sr-act="copyAddress">Copia indirizzo</button><h2>Le regole del tempio</h2><ol><li>Meno auto possibile: organizzatevi con i passaggi e riempite i posti.</li><li>Il link è solo per gli invitati: non condividetelo con nessun altro.</li><li>La quota si paga esclusivamente con bonifico.</li><li>Niente alcolici portati da fuori: dentro c’è l’open bar, già incluso nel prezzo.</li><li>Niente sudicio in giro: ogni cosa al suo posto.</li><li>Niente sigarette o mozziconi per terra.</li><li>Rispetto per il luogo e per le persone, sempre.</li><li>I fascisti non sono ammessi.</li></ol></section>
     <section data-sr-room="quota" hidden><p>Quota 30 euro, pagamento in attesa. IBAN IT60 X054 2811 1010 0000 0123 456, causale Festa Magica – Lunetta.</p><button type="button" data-sr-act="copyIban">Copia IBAN</button></section>
     <section data-sr-room="passaggi" hidden><p>Auto di Kosmo alle 21:00 da Santa Maria Novella, 2 posti. Auto di Aurora alle 21:10 da Campo di Marte, 1 posto. Auto di Dani alle 21:15 da Rifredi, 3 posti.</p></section>
     <section data-sr-room="ospiti" hidden><p>14 ospiti su 30: Dani, Le Cardon, Lunetta, Kosmo, Nebula, Aurora, Cometa, Saturno e altri.</p></section>
@@ -278,8 +278,9 @@ function setNav(i){
 document.querySelectorAll('[data-go]').forEach(function(b){
   b.addEventListener('click', function(){
     var k = b.getAttribute('data-go');
-    if (k === 'regia') { if (phase === 'rooms') openRegia(true); return; }
+    if (k === 'regia') { if (phase === 'rooms') { snapCloseRules(); openRegia(true); } return; }
     var i = ROOMS.indexOf(k);
+    if (rules.open || rules.anim) { snapCloseRules(); if (i === current) return; }
     if (regiaOpen) { openRegia(false); if (i === current) return; }
     go(i);
   });
@@ -605,6 +606,7 @@ function resize(){
   camera.fov = w / h < .75 ? 74 : 56;
   camera.updateProjectionMatrix();
   if (phase === 'key' || phase === 'form') { var cp = cardPose(); camera.position.copy(cp.pos); camera.lookAt(cp.look); }
+  if (rules && rules.open && !rules.anim) { var rp = rulesPose(); camera.position.copy(rp.pos); camera.lookAt(rp.look); }
 }
 
 function easeInOut(t){ return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
@@ -638,6 +640,7 @@ function frame(now){
     if (k >= 1) { var done = tween.done; tween = null; if (done) done(); }
   }
   cardAnim(t);
+  rulesStep(now);
   if (phase === 'key' || phase === 'form') placeOverlay();
   renderer.render(scene, camera);
 }
@@ -820,12 +823,112 @@ function drawStele(x, w, h, s){
   T(x, PARTY.place, w/2, h*.68, s*(PARTY.place.length > 32 ? .1 : .125), { weight: 500 });
   T(x, countdownText(), w/2, h*.84, s*.095, { weight: 400, color: '#5c4632' });
 }
+var RULES = [
+  'Meno auto possibile: organizzatevi con i passaggi e riempite i posti.',
+  'Il link è solo per gli invitati: non condividetelo con nessun altro.',
+  'La quota si paga esclusivamente con bonifico.',
+  'Niente alcolici portati da fuori: dentro c’è l’open bar, già incluso nel prezzo.',
+  'Niente sudicio in giro: ogni cosa al suo posto.',
+  'Niente sigarette o mozziconi per terra.',
+  'Rispetto per il luogo e per le persone, sempre.',
+  'I fascisti non sono ammessi.'
+];
+var ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+var steleG = null, rulesMat = null, festaBtns = [], rules = { open: false, anim: null };
+var RULES_H = 5.0;
+var STELE_BASE = { y: 2.25, z: -9.65 }, STELE_OPEN = { y: 3.85, z: -9.15, sy: RULES_H / 1.35 };
+
+function wrapLines(x, text, maxW){
+  var words = text.split(' '), lines = [], cur = '';
+  words.forEach(function(wd){ var t = cur ? cur + ' ' + wd : wd; if (x.measureText(t).width > maxW && cur) { lines.push(cur); cur = wd; } else cur = t; });
+  if (cur) lines.push(cur);
+  return lines;
+}
+function drawRules(x, w, h){
+  stone('#f4efe6', 707, { veins: 'rgba(120,110,95,.18)' })(x, w, h);
+  var b = 14; x.strokeStyle = '#b08a3a'; x.lineWidth = b; x.strokeRect(b, b, w - 2*b, h - 2*b);
+  x.lineWidth = 4; x.strokeRect(40, 40, w - 80, h - 80);
+  T(x, 'LE REGOLE DEL TEMPIO', w/2, 140, 62, { serif: true, weight: 700, color: '#2a1c14', spacing: 4 });
+  x.fillStyle = '#c9a24a'; x.fillRect(w * .3, 192, w * .4, 5);
+  var top = 230, bottom = h - 230, gap = (bottom - top) / RULES.length;
+  var size = 50, left = 178, maxW = w - left - 74;
+  RULES.forEach(function(r, i){
+    var cy = top + gap * i + gap / 2;
+    if (i > 0) { var gy = top + gap * i; x.fillStyle = 'rgba(176,138,58,.55)'; x.fillRect(left, gy - 1.5, maxW, 3); x.fillStyle = '#c9a24a'; x.save(); x.translate(108, gy); x.rotate(Math.PI / 4); x.fillRect(-6, -6, 12, 12); x.restore(); }
+    x.fillStyle = '#8e2b1f'; x.beginPath(); x.arc(108, cy, 44, 0, 7); x.fill();
+    x.strokeStyle = '#e0b44a'; x.lineWidth = 4; x.beginPath(); x.arc(108, cy, 37, 0, 7); x.stroke();
+    T(x, ROMAN[i], 108, cy + 2, ROMAN[i].length > 2 ? 28 : 36, { serif: true, weight: 700, color: '#fdf6e0' });
+    x.font = '500 ' + size + 'px ' + SANS;
+    var lines = wrapLines(x, r, maxW), sz = size;
+    if (lines.length > 2) { sz = 44; x.font = '500 ' + sz + 'px ' + SANS; lines = wrapLines(x, r, maxW); }
+    var lh = sz * 1.22, y0 = cy - (lines.length - 1) * lh / 2;
+    lines.forEach(function(l, k){ T(x, l, left, y0 + k * lh, sz, { weight: 500, color: '#2a1c14', align: 'left' }); });
+  });
+  var bw = 520, bh = 120, bx = (w - bw) / 2, by = h - 200;
+  rr(x, bx, by, bw, bh, 60); x.fillStyle = '#8e2b1f'; x.fill();
+  x.strokeStyle = '#e0b44a'; x.lineWidth = 4; rr(x, bx + 10, by + 10, bw - 20, bh - 20, 50); x.stroke();
+  T(x, '‹  Indietro', w/2, by + bh/2 + 3, 56, { weight: 600, color: '#fdfbf6' });
+}
 function contentFesta(room){
   var marble = M({ map: tex(512, 512, stone('#ece6da', 61, { veins: 'rgba(120,110,95,.22)' })), roughness: .45 });
-  plinth(room, marble, 0, -9.7, 2.3, 1.08);
-  steleSlab = slab(room, 2.6, 1.55, .2, faceTex(2.6, 1.55, drawStele), marble, 0, 1.85, -9.65, .14);
-  button3d(room, 0, 1.3, .4, 'Apri in Maps', 'primary', -.42, .92, -9.25, .3, ACTIONS.maps);
-  var cp = button3d(room, 0, .78, .4, 'Copia', 'secondary', .7, .92, -9.25, .3, function(){ ACTIONS.copyAddress(); cp.flash('Copiato'); });
+  plinth(room, marble, 0, -9.7, 2.3, 1.55);
+  steleG = new THREE.Group(); steleG.position.set(0, STELE_BASE.y, STELE_BASE.z); room.add(steleG);
+  steleSlab = slab(steleG, 2.6, 1.35, .2, faceTex(2.6, 1.35, drawStele), marble, 0, 0, 0, .14);
+  rulesMat = M({ map: faceTex(2.6, RULES_H, drawRules), roughness: .55 });
+  var mats = steleSlab.material.slice(); mats[5] = rulesMat; steleSlab.material = mats;
+  festaBtns.push(button3d(room, 0, 1.3, .4, 'Apri in Maps', 'primary', -.42, 1.32, -9.22, .3, ACTIONS.maps));
+  var cp = button3d(room, 0, .78, .4, 'Copia', 'secondary', .7, 1.32, -9.22, .3, function(){ ACTIONS.copyAddress(); cp.flash('Copiato'); });
+  festaBtns.push(cp);
+  festaBtns.push(button3d(room, 0, 2.1, .42, 'Regole', 'secondary', 0, .84, -9.1, .3, function(){ openRules(true); }));
+  var closer = { mesh: steleSlab, holder: steleG, room: 0, hover: function(){}, press: function(){}, set: function(){}, visible: function(){ return rules.open && !rules.anim; }, action: function(){ openRules(false); } };
+  steleSlab.userData.btn = closer; clickables.push(closer);
+}
+function rulesPose(){
+  var vf = THREE.MathUtils.degToRad(camera.fov) / 2;
+  var dW = (2.6 / .99) / (2 * Math.tan(vf) * camera.aspect);
+  var dH = (RULES_H / .86) / (2 * Math.tan(vf));
+  var d = Math.max(dW, dH);
+  var c = new THREE.Vector3(0, STELE_OPEN.y, STELE_OPEN.z);
+  return { pos: new THREE.Vector3(0, c.y - d * .02, c.z + d), look: new THREE.Vector3(0, c.y - .22, c.z) };
+}
+function roomLook(){ return new THREE.Vector3(0, CAM_Y + Math.tan(PITCH) * 10.8, -16); }
+function setStele(e){
+  steleG.rotation.y = Math.PI * e;
+  steleG.position.y = STELE_BASE.y + (STELE_OPEN.y - STELE_BASE.y) * e + Math.sin(Math.PI * e) * .25;
+  steleG.position.z = STELE_BASE.z + (STELE_OPEN.z - STELE_BASE.z) * e;
+  steleG.scale.y = 1 + (STELE_OPEN.sy - 1) * e;
+  steleSlab.rotation.x = -.14 * (1 - e);
+}
+function openRules(open){
+  if (phase !== 'rooms' || current !== 0 || rules.anim || moving) return;
+  if (open === rules.open) return;
+  moving = true;
+  if (hovered) { hovered.hover(false); hovered = null; canvas.style.cursor = ''; }
+  if (open) festaBtns.forEach(function(b){ b.holder.visible = false; });
+  var rp = rulesPose(), from = open ? 0 : 1, to = open ? 1 : 0;
+  var done = function(){
+    rules.anim = null; rules.open = open; moving = false;
+    if (!open) festaBtns.forEach(function(b){ b.holder.visible = true; });
+    announce(open ? 'Le regole: ' + RULES.join(' ') : 'Regole chiuse');
+  };
+  if (reduce) { setStele(to); if (open) { camera.position.copy(rp.pos); camera.lookAt(rp.look); } else aim(camPos(0), camYaw(0), PITCH); done(); return; }
+  rules.anim = { start: performance.now(), dur: 1600, from: from, to: to };
+  var a = open ? camPos(0) : rp.pos, b = open ? rp.pos : camPos(0);
+  var la = open ? roomLook() : rp.look, lb = open ? rp.look : roomLook();
+  var mid = a.clone().lerp(b, .5); mid.y += .25;
+  tween = { mode: 'look', pos: new THREE.CatmullRomCurve3([a, mid, b], false, 'centripetal'), look: new THREE.CatmullRomCurve3([la, la.clone().lerp(lb, .5), lb], false, 'centripetal'), start: performance.now(), dur: 1600, done: done };
+}
+function rulesStep(now){
+  if (!rules.anim) return;
+  var k = Math.min(1, Math.max(0, (now - rules.anim.start) / rules.anim.dur));
+  var e = easeInOut(k);
+  setStele(rules.anim.from + (rules.anim.to - rules.anim.from) * e);
+}
+function snapCloseRules(){
+  if (!rules.open && !rules.anim) return;
+  rules.anim = null; rules.open = false; tween = null; moving = false;
+  setStele(0); festaBtns.forEach(function(b){ b.holder.visible = true; });
+  aim(camPos(current), camYaw(current), PITCH);
 }
 
 function drawQuotaFace(x, w, h, s){
