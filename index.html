@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>Il Tempio Magico</title>
+<title>Sun System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Jost:wght@400;500;600&display=swap">
@@ -239,7 +239,7 @@ header.top{display:flex;align-items:center;gap:12px;padding-block:12px 0}
 (function(){
 "use strict";
 var ROOMS = ['festa','quota','passaggi','ospiti'];
-var TITLES = { festa:'Festa Magica', quota:'La Quota', passaggi:'I Passaggi', ospiti:'Gli Ospiti' };
+var TITLES = { festa:'Sun System', quota:'La Quota', passaggi:'I Passaggi', ospiti:'Gli Ospiti' };
 var FRIEZE = { festa:'FESTA MAGICA', quota:'LA QUOTA', passaggi:'I PASSAGGI', ospiti:'GLI OSPITI' };
 var DOOR = { festa:'FESTA', quota:'QUOTA', passaggi:'PASSAGGI', ospiti:'OSPITI' };
 var GUESTS = [['Dani','#8e2b1f'],['Le Cardon','#4a7398'],['Lunetta','#c9a066'],['Kosmo','#2c4f74'],['Nebula','#6a1e15'],['Aurora','#9a6e37'],['Cometa','#84a5bf'],['Saturno','#5c4632']];
@@ -398,9 +398,11 @@ function shell(room, i, o){
   add(room, new THREE.BoxGeometry(pierW, H, .6), o.front, (doorW/2 + pierW/2), H/2, Z0 + .3);
   var lintelMats = [o.front, o.front, o.front, o.front, M({ map: tex(1024, 256, inscription(DOOR[ROOMS[i]], 120, true)), roughness: .8 }), o.front];
   add(room, new THREE.BoxGeometry(doorW, H - doorH, .6), lintelMats, 0, doorH + (H - doorH)/2, Z0 + .3);
-  var friezeTex = tex(1536, 288, inscription(FRIEZE[ROOMS[i]], 150, true));
+  var friezeText = i === 0 ? String(PARTY.name || '').toUpperCase() : FRIEZE[ROOMS[i]];
+  var friezeTex = tex(1536, 288, inscription(friezeText, friezeText.length > 14 ? 112 : 150, true));
   var friezeMats = [o.trim, o.trim, o.trim, o.trim, M({ map: friezeTex, roughness: .75 }), o.trim];
-  add(room, new THREE.BoxGeometry(5.6, 1.05, .14), friezeMats, 0, 6.35, Z1 + .07);
+  var fz = add(room, new THREE.BoxGeometry(5.6, 1.05, .14), friezeMats, 0, 6.35, Z1 + .07);
+  if (i === 0) atriumFrieze = fz;
   if (o.beams) for (var bz = Z0 - .9; bz > Z1; bz -= 1.6) add(room, new THREE.BoxGeometry(W, .3, .32), o.beams, 0, H - .15, bz);
   return { Z0: Z0, Z1: Z1, W: W, H: H };
 }
@@ -731,7 +733,7 @@ var SKEY = 'festaMagica.session.v2';
 var USER_COLS = 'id,ruolo,nome,cognome,nick,foto,pagato,viaggio,avviso,creato';
 var sb = null, DEMO = false, channel = null, PASSWORDS = {};
 var MAX = 30;
-var PARTY = { name: 'Festa Magica', date: '2026-11-21', time: '21:30', place: "Piazza dell'Isolotto, Firenze", maps: 'https://www.google.com/maps/search/?api=1&query=Piazza+dell%27Isolotto+Firenze', fee: 30, iban: 'IT60 X054 2811 1010 0000 0123 456', holder: 'Festa Magica' };
+var PARTY = { name: 'Sun System', date: '2026-11-21', time: '21:30', place: "Piazza dell'Isolotto, Firenze", maps: 'https://www.google.com/maps/search/?api=1&query=Piazza+dell%27Isolotto+Firenze', fee: 30, iban: 'IT60 X054 2811 1010 0000 0123 456', holder: 'Sun System' };
 var PEOPLE = [], CARS = [];
 var PALETTE = ['#8e2b1f', '#4a7398', '#c9a066', '#2c4f74', '#6a1e15', '#9a6e37', '#84a5bf', '#5c4632', '#6b4f7a'];
 function colorFor(id){ var h = 0; for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0; return PALETTE[h % PALETTE.length]; }
@@ -806,18 +808,17 @@ var MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','
 var DAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
 function partyDateText(){ var d = new Date(PARTY.date + 'T12:00:00'); if (isNaN(d)) return PARTY.date; return DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()]; }
 var steleSlab = null, ospitiSlab = null, plateRows = [], discs = [], sealMat = null;
-var lastSig = {};
+var lastSig = {}, atriumFrieze = null;
 function changed(k, v){ var sg = JSON.stringify(v); if (lastSig[k] === sg) return false; lastSig[k] = sg; return true; }
 var carPage = 0, guestPage = 0, pageBtn = null, guestPageBtn = null;
 
 function drawStele(x, w, h, s){
   marbleFace(63)(x, w, h);
-  T(x, 'SEI INVITATO A', w/2, h*.13, s*.085, { weight: 600, color: '#7a5a3c', spacing: s*.02 });
-  T(x, partyDateText(), w/2, h*.3, s*.17, { serif: true, weight: 700 });
-  T(x, 'ore ' + PARTY.time, w/2, h*.46, s*.15, { serif: true, weight: 700, color: '#8e2b1f' });
-  x.fillStyle = '#c9a24a'; x.fillRect(w*.3, h*.57, w*.4, Math.max(3, s*.008));
-  T(x, PARTY.place, w/2, h*.69, s*(PARTY.place.length > 32 ? .1 : .12), { weight: 500 });
-  T(x, countdownText(), w/2, h*.84, s*.092, { weight: 400, color: '#5c4632' });
+  T(x, partyDateText(), w/2, h*.22, s*.18, { serif: true, weight: 700 });
+  T(x, 'ore ' + PARTY.time, w/2, h*.41, s*.16, { serif: true, weight: 700, color: '#8e2b1f' });
+  x.fillStyle = '#c9a24a'; x.fillRect(w*.3, h*.54, w*.4, Math.max(3, s*.008));
+  T(x, PARTY.place, w/2, h*.68, s*(PARTY.place.length > 32 ? .1 : .125), { weight: 500 });
+  T(x, countdownText(), w/2, h*.84, s*.095, { weight: 400, color: '#5c4632' });
 }
 function contentFesta(room){
   var marble = M({ map: tex(512, 512, stone('#ece6da', 61, { veins: 'rgba(120,110,95,.22)' })), roughness: .45 });
@@ -897,10 +898,21 @@ function refreshBoard(){
   if (driveNote) {
     var mc = myCar();
     var m2 = driveNote.material[4];
-    if (changed('drive', mc || null)) { m2.map.dispose();
-    m2.map = faceTex(2.6, .62, function(x, w, h, s){
+    if (changed('drive', [mc || null, mc ? mc.passengers.map(nickOf) : null])) { m2.map.dispose();
+    m2.map = faceTex(2.6, .8, function(x, w, h, s){
       marbleFace(97, false)(x, w, h);
-      if (mc) { T(x, 'La tua auto · ' + mc.time + ' da ' + mc.from, w/2, h*.36, s*.115, { weight: 600 }); T(x, mc.passengers.length + ' a bordo · ' + freeSeats(mc) + ' posti liberi', w/2, h*.7, s*.095, { weight: 400, color: '#5c4632' }); }
+      if (mc) {
+        var fit = function(t, max, sz){ x.font = '600 ' + sz + 'px ' + SANS; var tw = x.measureText(t).width; return tw > max ? sz * max / tw : sz; };
+        var l1 = 'La tua auto · ' + mc.time + ' da ' + mc.from;
+        T(x, l1, w/2, h*.24, fit(l1, w*.9, s*.115), { weight: 600 });
+        var names = mc.passengers.map(nickOf);
+        var l2 = names.length ? 'A bordo: ' + names.join(', ') : 'Ancora nessuno a bordo';
+        T(x, l2, w/2, h*.52, fit(l2, w*.9, s*.105), { weight: 600, color: '#8e2b1f' });
+        var rs = (mc.reserved || []).map(function(r){ return r.name || nickOf(r.userId); });
+        var f = freeSeats(mc);
+        var l3 = (rs.length ? 'Riservati: ' + rs.join(', ') + ' · ' : '') + (f === 0 ? 'auto piena' : f + (f === 1 ? ' posto libero' : ' posti liberi'));
+        T(x, l3, w/2, h*.78, fit(l3, w*.9, s*.09), { weight: 400, color: '#5c4632' });
+      }
       else { T(x, 'Guidi tu? Aggiungi la tua auto', w/2, h*.36, s*.12, { weight: 600 }); T(x, 'Orario, partenza e posti liberi', w/2, h*.7, s*.095, { weight: 400, color: '#5c4632' }); }
     });
     m2.needsUpdate = true; }
@@ -941,7 +953,7 @@ function contentPassaggi(room){
     plateRows.push({ group: g, plate: plate, btn: btn });
   });
   driveG = new THREE.Group(); driveG.visible = false; board.add(driveG);
-  driveNote = slab(driveG, 2.6, .62, .06, faceTex(2.6, .62, emptyPlate), marble, 0, .1, .08, 0);
+  driveNote = slab(driveG, 2.6, .8, .06, faceTex(2.6, .8, emptyPlate), marble, 0, .13, .08, 0);
   drivePrimary = button3d(driveG, 2, 1.25, .42, 'Aggiungi auto', 'primary', 0, -.55, .1, 0, function(){ openSheet(true); });
   driveWithdraw = button3d(driveG, 2, 1.0, .42, 'Ritira auto', 'secondary', .6, -.55, .1, 0, async function(){
     var mc = myCar(); if (!mc) return;
@@ -1024,6 +1036,9 @@ function contentOspiti(room){
   refreshGuests();
 }
 function refreshWorld(){
+  if (atriumFrieze && changed('frieze', PARTY.name)) { var ft = String(PARTY.name || '').toUpperCase(), fm = atriumFrieze.material[4]; fm.map.dispose(); fm.map = tex(1536, 288, inscription(ft, ft.length > 14 ? 112 : 150, true)); fm.needsUpdate = true; }
+  if (frontCanvas && changed('cardname', PARTY.name) && (phase === 'intro' || phase === 'key' || phase === 'checking')) drawFront();
+  TITLES.festa = PARTY.name;
   if (steleSlab && changed('stele', [PARTY, countdownText()])) { var m = steleSlab.material[4]; m.map.dispose(); m.map = faceTex(2.6, 1.55, drawStele); m.needsUpdate = true; }
   if (quotaSlab && changed('quota', [PARTY, USER.nick])) { var q = quotaSlab.material[4]; q.map.dispose(); q.map = faceTex(2.6, 1.6, drawQuotaFace); q.needsUpdate = true; }
   if (sealMat && changed('seal', !!(me() && me().paid))) { sealMat.map.dispose(); sealMat.map = tex(256, 256, drawSeal); sealMat.needsUpdate = true; }
@@ -1341,7 +1356,10 @@ function drawFront(){
   x.beginPath(); x.moveTo(cx, 112); x.lineTo(cx + 132, 338); x.lineTo(cx - 132, 338); x.closePath(); x.stroke();
   drawEye(x, cx, 268, 58, '#d4a73c', '#f4ecd6');
   x.fillStyle = '#07060f'; x.beginPath(); x.arc(cx, 268, 13, 0, 7); x.fill();
-  T(x, 'FESTA MAGICA', cx, 448, 74, { serif: true, weight: 700, color: goldGrad(x, 410, 486), spacing: 8 });
+  var cardName = String(PARTY.name || '').toUpperCase(), cfs = 74;
+  x.font = '700 ' + cfs + 'px ' + SERIF; var cnw = x.measureText(cardName).width + cardName.length * 8;
+  if (cnw > w * .82) cfs = cfs * (w * .82) / cnw;
+  T(x, cardName, cx, 448, cfs, { serif: true, weight: 700, color: goldGrad(x, 410, 486), spacing: 8 * cfs / 74 });
   T(x, 'Tornata riservata · Oriente di Firenze', cx, 508, 28, { weight: 400, color: '#b9ad8a' });
   x.strokeStyle = '#c9a24a'; x.lineWidth = 5; x.lineCap = 'round';
   x.beginPath(); x.moveTo(cx, 560); x.lineTo(cx - 54, 660); x.moveTo(cx, 560); x.lineTo(cx + 54, 660); x.stroke();
