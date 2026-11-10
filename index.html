@@ -191,14 +191,14 @@ header.top{display:flex;align-items:center;gap:12px;padding-block:12px 0}
   <div id="sheet" class="sheet" hidden>
     <div class="sheet-back" data-sheet-close></div>
     <form id="sheet-form" class="card sheet-card" aria-labelledby="sh-title">
-      <h2 id="sh-title">Offri un passaggio</h2>
+      <h2 id="sh-title">Aggiungi auto</h2>
       <div class="rgrid">
         <label class="rfield" for="sh-time"><span>Orario di partenza</span><input id="sh-time" type="time" required></label>
         <label class="rfield" for="sh-seats"><span>Posti liberi</span><input id="sh-seats" type="number" min="1" max="8" required></label>
       </div>
       <label class="rfield" for="sh-from"><span>Luogo di partenza</span><input id="sh-from" type="text" placeholder="Es. Piazza Beccaria" required></label>
       <p id="sh-msg" class="rnote" role="status"></p>
-      <div class="row"><button type="button" class="btn outline" data-sheet-close>Chiudi</button><button type="submit" class="btn primary" id="sh-save">Pubblica</button></div>
+      <div class="row"><button type="button" class="btn outline" data-sheet-close>Chiudi</button><button type="submit" class="btn primary" id="sh-save">Aggiungi</button></div>
       <section id="sh-res" class="sh-res" hidden aria-labelledby="sh-res-title">
         <div class="row" style="justify-content:space-between"><h3 id="sh-res-title">Riserva un posto</h3><span class="rnote" id="sh-res-free"></span></div>
         <p class="rnote">Scegli tra gli iscritti, oppure scrivi nome e cognome di chi non si è ancora registrato: quando si registrerà troverà il posto pronto e un avviso.</p>
@@ -288,7 +288,7 @@ document.querySelectorAll('[data-go]').forEach(function(b){
 /* ---------- 3D ---------- */
 var canvas = document.getElementById('scene');
 var renderer = null;
-try { if (window.THREE) renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); } catch(err) { renderer = null; }
+try { if (window.THREE) renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, logarithmicDepthBuffer: true }); } catch(err) { renderer = null; }
 if (!renderer) {
   document.body.classList.add('no-gl');
   window.go3d = null;
@@ -416,10 +416,10 @@ function buildFesta(room){
   arch.moveTo(-1.35, 0); arch.lineTo(-1.35, 2.7); arch.absarc(0, 2.7, 1.35, Math.PI, 0, true); arch.lineTo(1.35, 0); arch.lineTo(-1.35, 0);
   var frame = new THREE.Shape();
   frame.moveTo(-1.7, 0); frame.lineTo(-1.7, 2.7); frame.absarc(0, 2.7, 1.7, Math.PI, 0, true); frame.lineTo(1.7, 0); frame.lineTo(-1.7, 0);
-  add(room, new THREE.ShapeGeometry(frame, 32), marble, 0, 1.1, s.Z1 + .02);
-  add(room, new THREE.ShapeGeometry(arch, 32), new THREE.MeshBasicMaterial({ color: 0x070a1c }), 0, 1.1, s.Z1 + .04);
+  add(room, new THREE.ShapeGeometry(frame, 32), marble, 0, 1.1, s.Z1 + .04);
+  add(room, new THREE.ShapeGeometry(arch, 32), new THREE.MeshBasicMaterial({ color: 0x070a1c }), 0, 1.1, s.Z1 + .09);
   var starGeo = new THREE.BufferGeometry(), pts = [], r = rnd(21);
-  for (var k = 0; k < 90; k++) { var px = (r() - .5) * 2.4, py = 1.2 + r() * 3.9; if (py > 3.8 && Math.hypot(px, py - 3.8) > 1.25) continue; pts.push(px, py, s.Z1 + .06); }
+  for (var k = 0; k < 90; k++) { var px = (r() - .5) * 2.4, py = 1.2 + r() * 3.9; if (py > 3.8 && Math.hypot(px, py - 3.8) > 1.25) continue; pts.push(px, py, s.Z1 + .13); }
   starGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   var stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xfff6dd, size: .045, transparent: true, opacity: .9 }));
   room.add(stars); anim.push(function(t){ stars.material.opacity = .65 + .3 * Math.sin(t * 1.3); });
@@ -434,7 +434,7 @@ function buildFesta(room){
     x.restore(); x.strokeStyle = '#0b0d1e'; x.lineWidth = 10;
     x.beginPath(); x.moveTo(20, h/2); x.quadraticCurveTo(w/2, -30, w - 20, h/2); x.stroke();
   });
-  var eye = add(room, new THREE.PlaneGeometry(1.5, .75), new THREE.MeshBasicMaterial({ map: eyeTex, transparent: true }), 0, 3.95, s.Z1 + .08);
+  var eye = add(room, new THREE.PlaneGeometry(1.5, .75), new THREE.MeshBasicMaterial({ map: eyeTex, transparent: true }), 0, 3.95, s.Z1 + .16);
   anim.push(function(t){ var p = t % 7; eye.scale.y = (p > 6.55 && p < 6.85) ? .08 : 1; });
   var glow = new THREE.PointLight(0xfff0c8, .9, 7); glow.position.set(0, 4, s.Z1 + 1.2); room.add(glow);
   column(room, -1.95, -11.8, 5.9, marble); column(room, 1.95, -11.8, 5.9, marble);
@@ -527,7 +527,7 @@ function buildPassaggi(room){
   for (var v = 0; v < uv.count; v++) uv.setXY(v, (wp.getX(v) + .75) / 1.5, wp.getY(v) / 2.95);
   var winMat = new THREE.MeshBasicMaterial({ map: sky });
   [-1, 1].forEach(function(side){
-    [-12.4, -14.5].forEach(function(z){ add(room, winGeo, winMat, side * 3.185, 1.3, z, 0, side * -Math.PI/2); });
+    [-12.4, -14.5].forEach(function(z){ add(room, winGeo, winMat, side * 3.13, 1.3, z, 0, side * -Math.PI/2); });
   });
   var wood = M({ color: 0x6b4426, roughness: .75 });
   var wheel = new THREE.Group(); wheel.position.set(0, 4.05, s.Z1 + .35); room.add(wheel);
@@ -569,7 +569,7 @@ function buildOspiti(room){
     x.fillStyle = '#fffbe8'; x.beginPath(); x.arc(w/2, h/2, 110, 0, 7); x.fill();
     x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.arc(w/2 + 46, h/2 - 26, 100, 0, 7); x.fill();
   });
-  add(room, new THREE.PlaneGeometry(1.3, 1.3), new THREE.MeshBasicMaterial({ map: moonTex, transparent: true }), 2.05, 4.85, s.Z1 + .06);
+  add(room, new THREE.PlaneGeometry(1.3, 1.3), new THREE.MeshBasicMaterial({ map: moonTex, transparent: true }), 2.05, 4.85, s.Z1 + .12);
   var goldFrame = M({ color: 0xd4a73c, metalness: .55, roughness: .35, emissive: 0x2a1e04 });
   var niche = M({ color: 0x0c0b22, roughness: 1 });
   var l = new THREE.PointLight(0xb8b4ff, 1.0, 14); l.position.set(0, 5, -11); room.add(l);
@@ -579,12 +579,12 @@ function buildOspiti(room){
 function buildHall(){
   var hall = new THREE.Group(); scene.add(hall);
   var floorTex = tex(1024, 1024, checker('#e7dcc6', '#2a1f17', 12));
-  add(hall, new THREE.PlaneGeometry(12.4, 12.4), M({ map: floorTex, roughness: .32 }), 0, 0, 0, -Math.PI/2);
+  add(hall, new THREE.PlaneGeometry(12, 12), M({ map: floorTex, roughness: .32 }), 0, 0, 0, -Math.PI/2);
   var block = M({ map: tex(512, 512, stone('#cdb48a', 51, { blocks: 6 }), [1, 2]), roughness: .95 });
   [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(function(c){ add(hall, new THREE.BoxGeometry(2.4, 7.4, 2.4), block, c[0] * 4.8, 3.7, c[1] * 4.8); });
   var marble = M({ map: tex(512, 512, stone('#ece6da', 53, { veins: 'rgba(120,110,95,.25)' })), roughness: .45 });
   [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(function(c){ column(hall, c[0] * 3.1, c[1] * 3.1, 5.2, marble); });
-  add(hall, new THREE.PlaneGeometry(200, 200), M({ color: 0xb5874c, roughness: 1 }), 0, -.02, 0, -Math.PI/2);
+  add(hall, new THREE.PlaneGeometry(200, 200), M({ color: 0xb5874c, roughness: 1 }), 0, -.25, 0, -Math.PI/2);
 }
 
 function skyTexture(){
@@ -686,7 +686,9 @@ function drawBtn(label, kind){
     var g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,255,255,.18)'); g.addColorStop(.5, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(0,0,0,.18)');
     x.fillStyle = g; x.fillRect(0, 0, w, h);
     var b = h * .07; x.strokeStyle = st.line; x.lineWidth = b * .6; x.strokeRect(b, b, w - 2*b, h - 2*b);
-    T(x, label, w/2, h/2 + h*.02, h * .4, { weight: 600, color: st.fg });
+    var fs = h * .4; x.font = '600 ' + fs + 'px ' + SANS; var tw = x.measureText(label).width;
+    if (tw > w * .84) fs = fs * (w * .84) / tw;
+    T(x, label, w/2, h/2 + h*.02, fs, { weight: 600, color: st.fg });
   };
 }
 function button3d(parent, room, wu, hu, label, kind, x, y, z, tilt, action){
@@ -896,10 +898,10 @@ function refreshBoard(){
     m2.map = faceTex(2.6, .62, function(x, w, h, s){
       marbleFace(97, false)(x, w, h);
       if (mc) { T(x, 'La tua auto · ' + mc.time + ' da ' + mc.from, w/2, h*.36, s*.115, { weight: 600 }); T(x, mc.passengers.length + ' a bordo · ' + freeSeats(mc) + ' posti liberi', w/2, h*.7, s*.095, { weight: 400, color: '#5c4632' }); }
-      else { T(x, 'La tua auto non è ancora pubblicata', w/2, h*.36, s*.12, { weight: 600 }); T(x, 'Indica orario, partenza e posti liberi', w/2, h*.7, s*.095, { weight: 400, color: '#5c4632' }); }
+      else { T(x, 'Guidi tu? Aggiungi la tua auto', w/2, h*.36, s*.12, { weight: 600 }); T(x, 'Orario, partenza e posti liberi', w/2, h*.7, s*.095, { weight: 400, color: '#5c4632' }); }
     });
     m2.needsUpdate = true;
-    drivePrimary.set(mc ? 'Modifica' : 'Offri un passaggio', 'primary');
+    drivePrimary.set(mc ? 'Modifica' : 'Aggiungi auto', 'primary');
     driveWithdraw.holder.visible = !!mc;
     drivePrimary.holder.position.x = mc ? -.6 : 0;
   }
@@ -937,7 +939,7 @@ function contentPassaggi(room){
   });
   driveG = new THREE.Group(); driveG.visible = false; board.add(driveG);
   driveNote = slab(driveG, 2.6, .62, .06, faceTex(2.6, .62, emptyPlate), marble, 0, .1, .08, 0);
-  drivePrimary = button3d(driveG, 2, 1.1, .42, 'Offri un passaggio', 'primary', 0, -.55, .1, 0, function(){ openSheet(true); });
+  drivePrimary = button3d(driveG, 2, 1.25, .42, 'Aggiungi auto', 'primary', 0, -.55, .1, 0, function(){ openSheet(true); });
   driveWithdraw = button3d(driveG, 2, 1.0, .42, 'Ritira auto', 'secondary', .6, -.55, .1, 0, async function(){
     var mc = myCar(); if (!mc) return;
     await notifyPassengers(mc, 'La macchina di ' + USER.nick + ' non parte più: scegli un altro passaggio.');
@@ -1034,8 +1036,8 @@ function openSheet(open){
   document.getElementById('sh-from').value = mc ? mc.from : '';
   document.getElementById('sh-seats').value = mc ? mc.seats : 3;
   document.getElementById('sh-msg').textContent = '';
-  document.getElementById('sh-title').textContent = mc ? 'La tua auto' : 'Offri un passaggio';
-  document.getElementById('sh-save').textContent = mc ? 'Salva' : 'Pubblica';
+  document.getElementById('sh-title').textContent = mc ? 'La tua auto' : 'Aggiungi auto';
+  document.getElementById('sh-save').textContent = mc ? 'Salva' : 'Aggiungi';
   resMsg(''); renderResUI();
   setTimeout(function(){ document.getElementById('sh-from').focus(); }, 50);
 }
@@ -1060,7 +1062,7 @@ function setupSheet(){
     });
     if (ok) {
       if (mc) { openSheet(false); announce('Auto aggiornata'); }
-      else { document.getElementById('sh-title').textContent = 'La tua auto'; document.getElementById('sh-save').textContent = 'Salva'; msg.textContent = 'Auto pubblicata. Ora puoi riservare dei posti.'; renderResUI(); announce('Auto pubblicata'); }
+      else { document.getElementById('sh-title').textContent = 'La tua auto'; document.getElementById('sh-save').textContent = 'Salva'; msg.textContent = 'Auto aggiunta. Ora puoi riservare dei posti.'; renderResUI(); announce('Auto aggiunta'); }
     }
   });
 }
@@ -1440,7 +1442,7 @@ function buildDesk(){
   add(desk, new THREE.BoxGeometry(1.7, DESK_Y - .28, 2.5), marble, 0, .16 + (DESK_Y - .28) / 2, 0);
   add(desk, new THREE.BoxGeometry(3.1, .12, 4.2), wood, 0, DESK_Y - .06, 0);
   add(desk, new THREE.BoxGeometry(3.14, .03, 4.24), gold, 0, DESK_Y - .125, 0);
-  add(desk, new THREE.PlaneGeometry(2.7, 3.9), M({ color: 0x2e0810, roughness: 1 }), 0, DESK_Y + .002, 0, -Math.PI / 2);
+  add(desk, new THREE.PlaneGeometry(2.7, 3.9), M({ color: 0x2e0810, roughness: 1 }), 0, DESK_Y + .012, 0, -Math.PI / 2);
   var flames = [];
   [[-1.3, -1.8], [1.3, -1.8], [-1.3, 1.8], [1.3, 1.8]].forEach(function(c){
     add(desk, new THREE.CylinderGeometry(.11, .13, .06, 20), gold, c[0], DESK_Y + .03, c[1]);
@@ -1460,7 +1462,7 @@ function buildDesk(){
   backTex.center.set(.5, .5); backTex.rotation = Math.PI;
   drawFront(); drawBack();
   var edge = M({ color: 0xc9a24a, metalness: .5, roughness: .35 });
-  cardGroup = new THREE.Group(); cardGroup.position.set(0, DESK_Y + .004 + CARD_T / 2, 0); scene.add(cardGroup);
+  cardGroup = new THREE.Group(); cardGroup.position.set(0, DESK_Y + .03 + CARD_T / 2, 0); scene.add(cardGroup);
   add(cardGroup, new THREE.BoxGeometry(CARD_W, CARD_T, CARD_L), [edge, edge, new THREE.MeshStandardMaterial({ map: frontTex, roughness: .55, emissive: 0xffffff, emissiveMap: frontTex, emissiveIntensity: .18 }), new THREE.MeshStandardMaterial({ map: backTex, roughness: .6, emissive: 0xffffff, emissiveMap: backTex, emissiveIntensity: .12 }), edge, edge]);
   var tri = new THREE.Group(); tri.position.set(0, 5.6, 0); scene.add(tri);
   var pts = [0, 1, 2].map(function(k){ var a = k * Math.PI * 2 / 3 - Math.PI / 2; return new THREE.Vector3(Math.cos(a) * .7, -Math.sin(a) * .7, 0); });
@@ -1496,7 +1498,7 @@ function symbolTex(kind){
 }
 function plaques(room, a, b){
   [[-1, a], [1, b]].forEach(function(p){
-    add(room, new THREE.CircleGeometry(.5, 48), M({ map: symbolTex(p[1]), roughness: .5, emissive: 0xffffff, emissiveMap: symbolTex(p[1]), emissiveIntensity: .15 }), p[0] * 3.18, 4.5, -14.1, 0, -p[0] * Math.PI / 2);
+    add(room, new THREE.CircleGeometry(.5, 48), M({ map: symbolTex(p[1]), roughness: .5, emissive: 0xffffff, emissiveMap: symbolTex(p[1]), emissiveIntensity: .15 }), p[0] * 3.12, 4.5, -14.1, 0, -p[0] * Math.PI / 2);
   });
 }
 
@@ -1561,7 +1563,7 @@ function cardPose(){
   var d = Math.max(dW, dH);
   return { pos: new THREE.Vector3(0, DESK_Y + d * .985, d * .17), look: new THREE.Vector3(0, DESK_Y, .02) };
 }
-function cardPx2World(px, py){ return new THREE.Vector3((px / CW - .5) * CARD_W, DESK_Y + .004 + CARD_T, (py / CH - .5) * CARD_L); }
+function cardPx2World(px, py){ return new THREE.Vector3((px / CW - .5) * CARD_W, DESK_Y + .03 + CARD_T, (py / CH - .5) * CARD_L); }
 function placeOverlay(){
   var regions = phase === 'key' ? REG.front : (phase === 'form' ? REG[form.mode] : null);
   Object.keys(OVERLAY).forEach(function(k){
@@ -1733,7 +1735,7 @@ function cardAnim(t){
   if (flipT0 >= 0) {
     var f = Math.min(1, (t - flipT0) / 1.35), e = easeInOut(f);
     cardGroup.rotation.z = Math.PI * e;
-    cardGroup.position.y = DESK_Y + .004 + CARD_T / 2 + Math.sin(Math.PI * e) * .9;
+    cardGroup.position.y = DESK_Y + .03 + CARD_T / 2 + Math.sin(Math.PI * e) * .9;
     if (f >= 1) { flipT0 = -1; phase = 'form'; placeOverlay(); announce('Chiave corretta. Ora registrati sul retro del biglietto.'); }
   }
 }
@@ -1742,7 +1744,7 @@ function init3d(){
   scene = new THREE.Scene();
   scene.background = skyTexture();
   scene.fog = new THREE.Fog(0xd9c7a6, 42, 120);
-  camera = new THREE.PerspectiveCamera(64, 1, .1, 300);
+  camera = new THREE.PerspectiveCamera(64, 1, .2, 260);
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
